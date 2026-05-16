@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+gitpython
+radon
+lizard
+sentence-transformers
+chromadb
+networkx
+python-dotenv
+requests
+tf-keras
