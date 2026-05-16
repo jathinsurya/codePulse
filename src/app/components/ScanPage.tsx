@@ -65,7 +65,12 @@ export function ScanPage() {
         navigate(`/dashboard?session=${result.session_id}`);
       }, 1200);
     } catch (e: any) {
-      setScanError("Could not connect to backend. Make sure uvicorn is running on port 8000.");
+      const msg = e?.message || "Unknown error";
+      if (msg.includes("fetch") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        setScanError("Could not connect to backend. Make sure uvicorn is running on port 8000.");
+      } else {
+        setScanError(`Scan failed: ${msg}`);
+      }
       setIsScanning(false);
       setScanStep(0);
     }

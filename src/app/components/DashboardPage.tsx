@@ -695,13 +695,6 @@ function TabMRIScan({ repoState, analysisData }: { repoState: RepoState, analysi
       color: 'purple' 
     },
     { 
-      label: 'Maintainability', 
-      value: analysisData?.health_score ? (analysisData.health_score > 90 ? 'A+' : analysisData.health_score > 70 ? 'B' : 'C') : '...', 
-      trend: 'Computed', 
-      icon: <CheckCircle2 className="w-5 h-5" />, 
-      color: 'emerald' 
-    },
-    { 
       label: 'Endpoints', 
       value: analysisData?.api_routes?.length || '0', 
       trend: 'Detected', 
@@ -735,7 +728,7 @@ function TabMRIScan({ repoState, analysisData }: { repoState: RepoState, analysi
       <div className="flex-1 p-6 overflow-y-auto">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* MRI Stats Cards - FIX D7 */}
-          <div className="xl:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
             {mriStats.map((stat: any, idx: number) => (
               <motion.div
                 key={idx}
@@ -760,9 +753,15 @@ function TabMRIScan({ repoState, analysisData }: { repoState: RepoState, analysi
 
           {/* Dependency Graph - Full Width */}
           <div className="xl:col-span-3 bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex flex-col min-h-[600px]">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Network className="w-4 h-4 text-indigo-500" /> Dependency Architecture
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest flex items-center gap-2 m-0">
+                <Network className="w-4 h-4 text-indigo-500" /> Dependency Architecture
+              </h3>
+              <div className="flex items-center gap-2 text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-200 shadow-sm transition-transform hover:scale-[1.02]">
+                <Sparkles className="w-5 h-5" />
+                <span className="text-sm font-bold tracking-wide">Click "Full Screen" inside the graph for maximum clarity</span>
+              </div>
+            </div>
             <div className="flex-1 min-h-[500px] h-full w-full">
               <DependencyGraphVisualization data={analysisData?.dependency_graph} />
             </div>
@@ -895,6 +894,7 @@ function TabMRIScan({ repoState, analysisData }: { repoState: RepoState, analysi
 
 // FIX D5: React Flow Dependency Graph Component
 function DependencyGraphVisualization({ data }: { data?: any }) {
+  const outerContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Data State
@@ -921,6 +921,15 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
   const isSimulationRunning = useRef(true);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Record<string, boolean>>({
+    api: true,
+    models: true,
+    components: true,
+    utils: true,
+    orphan: true,
+  });
+  const [trimEdges, setTrimEdges] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Pan and Zoom
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -931,6 +940,7 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
   useEffect(() => {
     let animationFrameId: number;
     let alpha = 1;
+    isSimulationRunning.current = true; // Ensure simulation wakes up
     
     const simulate = () => {
       if (!isSimulationRunning.current) return;
@@ -946,7 +956,8 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
           const dx = nodes[i].x - nodes[j].x;
           const dy = nodes[i].y - nodes[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minD = nodes[i].radius + nodes[j].radius + 50; 
+          const spaceMultiplier = isFullscreen ? 3 : 2; // Increased base spacing
+          const minD = nodes[i].radius + nodes[j].radius + (50 * spaceMultiplier); 
           if (dist < minD * 2) {
             const force = (minD * 2 - dist) / dist * 0.1 * alpha;
             nodes[i].vx += dx * force;
@@ -965,7 +976,7 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
         const dx = target.x - source.x;
         const dy = target.y - source.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const targetDist = 90; 
+        const targetDist = isFullscreen ? 300 : 160; // Increased base distance
         const force = (dist - targetDist) / dist * 0.05 * alpha;
         source.vx += dx * force;
         source.vy += dy * force;
@@ -999,7 +1010,7 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
 
     animationFrameId = requestAnimationFrame(simulate);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [nodes, links]);
+  }, [nodes, links, isFullscreen]);
 
   // Handle Zoom native event
   useEffect(() => {
@@ -1059,18 +1070,32 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
       }
   };
 
+  const handleFullscreenToggle = () => {
+    if (!document.fullscreenElement) {
+      outerContainerRef.current?.requestFullscreen().catch(err => {
+        console.error("Error attempting to enable fullscreen:", err);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
   return (
-    <div className="relative w-full h-full min-h-[500px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+    <div ref={outerContainerRef} className={`relative w-full h-full min-h-[500px] bg-white border-gray-200 overflow-hidden flex flex-col transition-all duration-300 ${isFullscreen ? 'rounded-none border-0' : 'rounded-2xl border shadow-sm'}`}>
       {/* Legend & Controls */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-3">
         <div className="flex flex-col gap-2 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-gray-100 shadow-sm text-xs">
           <h4 className="font-bold text-gray-800 border-b border-gray-100 pb-1 mb-1">Module Types</h4>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500" /> <span>API Controllers</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /> <span>Data Models</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /> <span>React Components</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /> <span>Utilities</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /> <span className="font-bold text-red-600">Orphan (Dead Code)</span></div>
+          <button onClick={() => setFilters(f => ({...f, api: !f.api}))} className={`flex items-center gap-2 transition-opacity ${!filters.api ? 'opacity-30' : ''}`}><div className="w-3 h-3 rounded-full bg-purple-500" /> <span>API Controllers</span></button>
+          <button onClick={() => setFilters(f => ({...f, models: !f.models}))} className={`flex items-center gap-2 transition-opacity ${!filters.models ? 'opacity-30' : ''}`}><div className="w-3 h-3 rounded-full bg-blue-500" /> <span>Data Models</span></button>
+          <button onClick={() => setFilters(f => ({...f, components: !f.components}))} className={`flex items-center gap-2 transition-opacity ${!filters.components ? 'opacity-30' : ''}`}><div className="w-3 h-3 rounded-full bg-amber-500" /> <span>React Components</span></button>
+          <button onClick={() => setFilters(f => ({...f, utils: !f.utils}))} className={`flex items-center gap-2 transition-opacity ${!filters.utils ? 'opacity-30' : ''}`}><div className="w-3 h-3 rounded-full bg-emerald-500" /> <span>Utilities</span></button>
+          <button onClick={() => setFilters(f => ({...f, orphan: !f.orphan}))} className={`flex items-center gap-2 transition-opacity ${!filters.orphan ? 'opacity-30' : ''}`}><div className="w-3 h-3 rounded-full bg-red-500" /> <span className="font-bold text-red-600">Orphan (Dead Code)</span></button>
         </div>
+
+
         
         <div className="flex gap-2">
           <button 
@@ -1090,6 +1115,18 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
             className="px-3 h-8 rounded-lg bg-white border border-gray-200 shadow-sm flex items-center justify-center text-xs font-medium text-gray-600 hover:text-indigo-600 hover:bg-gray-50 transition-colors"
           >
             Reset
+          </button>
+          <button 
+            onClick={() => setTrimEdges(p => !p)}
+            className={`px-3 h-8 rounded-lg border shadow-sm flex items-center justify-center text-xs font-medium transition-colors ${trimEdges ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+          >
+            Trim Edges: {trimEdges ? 'ON' : 'OFF'}
+          </button>
+          <button 
+            onClick={handleFullscreenToggle}
+            className="px-3 h-8 rounded-lg bg-white border border-gray-200 shadow-sm flex items-center justify-center text-xs font-medium text-gray-600 hover:text-indigo-600 hover:bg-gray-50 transition-colors"
+          >
+            {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
           </button>
         </div>
       </div>
@@ -1140,12 +1177,21 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
           </defs>
           <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
             {/* Edges */}
+            {/* Edges */}
             {links.map((link: any, idx: number) => {
               const source = nodes.find(n => n.id === link.source)!;
               const target = nodes.find(n => n.id === link.target)!;
               
+              if (!source || !target) return null;
+              if (!filters[source.group] || !filters[target.group]) return null;
+              
               const isHighlight = connectedNodes && (connectedNodes.has(source.id) && connectedNodes.has(target.id));
               const isDimmed = connectedNodes && !isHighlight;
+              
+              let opacity = 0.3;
+              if (isDimmed) opacity = trimEdges ? 0 : 0.05;
+              if (isHighlight) opacity = 0.9;
+              if (!connectedNodes && trimEdges) opacity = 0.08;
 
               // Quadratic Bezier curve for elegant flowing lines
               const dx = target.x - source.x;
@@ -1155,7 +1201,7 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
               const path = `M${source.x},${source.y} Q${cx},${cy} ${target.x},${target.y}`;
 
               return (
-                <motion.g key={`link-${idx}`} opacity={isDimmed ? 0.1 : isHighlight ? 0.9 : 0.3} className="transition-all duration-300">
+                <motion.g key={`link-${idx}`} opacity={opacity} className="transition-all duration-300">
                   <motion.path
                     d={path}
                     fill="none"
@@ -1180,6 +1226,8 @@ function DependencyGraphVisualization({ data }: { data?: any }) {
 
             {/* Nodes */}
             {nodes.map((node) => {
+              if (!filters[node.group]) return null;
+
               const baseColor = getColor(node.group);
               const isHighlight = connectedNodes ? connectedNodes.has(node.id) : true;
               const isDimmed = connectedNodes && !isHighlight;
@@ -2929,80 +2977,45 @@ function LanguageBreakdown({ data }: { data?: any }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 relative z-10">
-        {/* Chart Column */}
-        <div className="flex flex-col items-center justify-center">
-          <div className="h-32 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={languageData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={35}
-                  outerRadius={50}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {languageData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  formatter={(value: number) => [`${value}%`, 'Usage']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Label */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Stack</span>
-              </div>
+      <div className="flex flex-col items-center justify-center flex-1 relative z-10">
+        <div className="h-40 w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={languageData}
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={65}
+                paddingAngle={5}
+                dataKey="value"
+                stroke="none"
+              >
+                {languageData.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                formatter={(value: number) => [`${value}%`, 'Usage']}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          {/* Center Label */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <span className="block text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Stack</span>
             </div>
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-2 mt-4">
-            {languageData.map((lang) => (
-              <div key={lang.name} className="flex items-center gap-1.5 cursor-pointer hover:bg-gray-50 px-1.5 py-1 rounded transition-colors" onClick={() => handleTechClick(lang.name)}>
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lang.color }} />
-                <span className="text-[10px] font-bold text-gray-600">{lang.name}</span>
-                <span className="text-[10px] text-gray-400">{lang.value}%</span>
-              </div>
-            ))}
-          </div>
         </div>
-
-        {/* Frameworks Column */}
-        <div className="flex flex-col justify-center gap-3">
-          {frameworks.map((fw) => (
-            <motion.div 
-              key={fw.name}
-              whileHover={{ scale: 1.02, x: 2 }}
-              onClick={() => handleTechClick(fw.name)}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-white hover:border-indigo-200 hover:shadow-sm transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg ${fw.bgClass} flex items-center justify-center ${fw.textClass}`}>
-                  <Layers className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-900 leading-tight group-hover:text-indigo-600 transition-colors">{fw.name}</h4>
-                  <p className="text-[10px] font-mono text-gray-500">v{fw.version}</p>
-                </div>
-              </div>
-              
-              {fw.status === 'outdated' && (
-                <div className="group/alert relative">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs p-2.5 rounded-lg opacity-0 group-hover/alert:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-gray-700">
-                    <span className="font-bold text-amber-400 block mb-1">Bob Alert:</span>
-                    Major version v5.x is available. Security patches missing.
-                  </div>
-                </div>
-              )}
-            </motion.div>
+        
+        <div className="flex flex-wrap justify-center gap-3 mt-6">
+          {languageData.map((lang) => (
+            <div key={lang.name} className="flex items-center gap-1.5 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded transition-colors" onClick={() => handleTechClick(lang.name)}>
+              <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: lang.color }} />
+              <span className="text-xs font-bold text-gray-700">{lang.name}</span>
+              <span className="text-xs text-gray-500 font-mono">{lang.value}%</span>
+            </div>
           ))}
         </div>
       </div>
