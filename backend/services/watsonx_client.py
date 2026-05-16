@@ -47,8 +47,10 @@ def chat_with_granite(prompt: str, context: str) -> str:
         print("[WatsonX] IAM token received successfully.")
 
         system_msg = (
-            "You are RepoMind AI, an expert code analyst. "
-            "Answer the user's question using ONLY the code context below. "
+            "You are CodePulse AI, an expert code analyst. "
+            "The user is currently looking at the dashboard. "
+            "Use the provided code context to answer technical questions accurately. "
+            "If the user asks about the UI (like the MRI Scan or Heatmap), use your knowledge that you are part of the CodePulse platform. "
             "Be specific, cite file names and line numbers when possible.\n\n"
             f"CODE CONTEXT:\n{context}"
         )

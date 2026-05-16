@@ -25,5 +25,5 @@ def handle_chat(request: ChatRequest):
     return ChatResponse(
         response=response_text,
         sources=sources,
-        model="ibm/granite-3-8b-instruct"
+        model="meta-llama/llama-3-3-70b-instruct"
     )
