@@ -1,33 +1,50 @@
 import requests
 import os
 
-WATSONX_URL = "https://us-south.ml.cloud.ibm.com"
-MODEL_ID = "ibm/granite-3-8b-instruct"
+MODEL_ID = os.getenv("WATSONX_MODEL_ID", "meta-llama/llama-3-3-70b-instruct")
 
 def get_iam_token(api_key: str) -> str:
+    print(f"[WatsonX] Fetching IAM token for key (len={len(api_key)})...")
     resp = requests.post(
         "https://iam.cloud.ibm.com/identity/token",
         data={
             "grant_type": "urn:ibm:params:oauth:grant-type:apikey",
             "apikey": api_key
         },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"
+        },
         timeout=15
     )
     if resp.status_code != 200:
-        print(f"[WatsonX] IAM Token Error: {resp.status_code} - {resp.text}")
+        print(f"[WatsonX] IAM Token Error ({resp.status_code}): {resp.text}")
     resp.raise_for_status()
     return resp.json()["access_token"]
 
 def chat_with_granite(prompt: str, context: str) -> str:
+    # Force reload .env on every request to ensure we aren't using stale IDs
+    env_path = os.path.join(os.path.dirname(__file__), "../../.env")
+    from dotenv import load_dotenv
+    load_dotenv(env_path, override=True)
+
+    # Read environment variables dynamically
     api_key = os.getenv("WATSONX_API_KEY", "").strip()
     project_id = os.getenv("WATSONX_PROJECT_ID", "").strip()
+    region = os.getenv("WATSONX_REGION", "us-south").strip()
+    url = f"https://{region}.ml.cloud.ibm.com"
+
+    print(f"[WatsonX] Using Model: {MODEL_ID}")
+    print(f"[WatsonX] Using Region: {region}, URL: {url}")
+    print(f"[WatsonX] Using Project ID: {project_id}")
 
     if not api_key or api_key == "your_api_key_here":
-        return "Mock Response: I found some interesting context. Please set WATSONX_API_KEY to chat."
+        return "Mock Response: I found some interesting context. Please set WATSONX_API_KEY in your .env file to enable live AI chat."
 
     try:
+        print("[WatsonX] Requesting IAM token...")
         token = get_iam_token(api_key)
+        print("[WatsonX] IAM token received successfully.")
 
         system_msg = (
             "You are RepoMind AI, an expert code analyst. "
@@ -49,8 +66,9 @@ def chat_with_granite(prompt: str, context: str) -> str:
             }
         }
 
+        print(f"[WatsonX] Sending request to {url}...")
         resp = requests.post(
-            f"{WATSONX_URL}/ml/v1/text/chat?version=2024-03-13",
+            f"{url}/ml/v1/text/chat?version=2024-03-13",
             json=payload,
             headers={
                 "Authorization": f"Bearer {token}",
@@ -60,34 +78,20 @@ def chat_with_granite(prompt: str, context: str) -> str:
         )
 
         # Print full response for debugging
-        print(f"[WatsonX] Status: {resp.status_code}")
+        print(f"[WatsonX] Response Status: {resp.status_code}")
         if resp.status_code != 200:
-            print(f"[WatsonX] Error body: {resp.text}")
-            return f"IBM Granite returned an error ({resp.status_code}). Check the backend terminal for details."
+            print(f"[WatsonX] Error Details: {resp.text}")
+            return f"IBM WatsonX Error ({resp.status_code}): {resp.text[:200]}..."
 
         data = resp.json()
-
-        # WatsonX chat endpoint returns choices[].message.content
         choices = data.get("choices", [])
         if choices:
             return choices[0].get("message", {}).get("content", "No response from model.")
 
-        # Fallback: try results[] path (text generation endpoint format)
-        results = data.get("results", [])
-        if results:
-            return results[0].get("generated_text", "No response from model.")
+        return "Received an unexpected response format from IBM WatsonX."
 
-        print(f"[WatsonX] Unexpected response shape: {data}")
-        return "Received an unexpected response format from IBM Granite."
-
-    except requests.exceptions.HTTPError as e:
-        print(f"[WatsonX] HTTP Error: {e}")
-        if e.response is not None:
-            print(f"[WatsonX] Response body: {e.response.text}")
-        return "HTTP error communicating with IBM Granite. Check backend logs."
-    except requests.exceptions.RequestException as e:
-        print(f"[WatsonX] Request failed: {e}")
-        return "Network error communicating with IBM Granite."
     except Exception as e:
-        print(f"[WatsonX] Unexpected error: {e}")
-        return "An unexpected error occurred while calling IBM Granite."
+        import traceback
+        print(f"[WatsonX] Exception: {str(e)}")
+        traceback.print_exc()
+        return f"System Error: {str(e)}"

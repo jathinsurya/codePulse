@@ -1,11 +1,12 @@
 import os
 from dotenv import load_dotenv
+
+# Load environment variables from the root .env file at the VERY BEGINNING
+load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"), override=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import scan, analysis, chat
-
-# Load environment variables from the root .env file
-load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 app = FastAPI(title="RepoMind AI API")
 
