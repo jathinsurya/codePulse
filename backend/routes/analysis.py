@@ -5,6 +5,7 @@ from services.code_parser import parse_codebase
 from services.complexity import calculate_heatmap, build_heatmap_tree
 from services.dependency_graph import build_dependency_graph
 from services.onboarding import generate_onboarding_data
+from services.scale_simulator import compute_scale_profile
 from utils.cache import get_session
 import traceback
 
@@ -73,6 +74,12 @@ def get_analysis(session_id: str):
         total_lang = sum(lang_map.values())
         languages = {k: (v / total_lang) * 100 for k, v in lang_map.items()} if total_lang else {}
 
+        # Compute scale simulation profile
+        scale_profile = compute_scale_profile(
+            heatmap_files, api_routes, dependency_graph, 
+            total_files, avg_complexity, languages
+        )
+
         return AnalysisResponse(
             health_score=health_score,
             heatmap_files=heatmap_files,
@@ -84,7 +91,8 @@ def get_analysis(session_id: str):
             total_files=total_files,
             avg_complexity=avg_complexity,
             onboarding_path=onboarding_path,
-            suggested_questions=suggested_questions
+            suggested_questions=suggested_questions,
+            scale_profile=scale_profile
         )
     except Exception as e:
         traceback.print_exc()

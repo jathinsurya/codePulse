@@ -52,3 +52,4 @@ class AnalysisResponse(BaseModel):
     avg_complexity: int
     onboarding_path: List[OnboardingStep]
     suggested_questions: List[str]
+    scale_profile: Dict[str, Any] = {}

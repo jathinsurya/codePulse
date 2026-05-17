@@ -6,7 +6,7 @@ import {
   Cpu, Settings, MessageSquare, AlertTriangle, CheckCircle2, 
   ChevronRight, Github, Send, ShieldAlert, ThermometerSun, 
   Code2, Clock, Flame, ChevronDown, X, Menu, ArrowLeft, Gauge,
-  FileCode2, Shield, CreditCard, Webhook, FileCode, FileText
+  FileCode2, Shield, CreditCard, Webhook, FileCode, FileText, Monitor, Download
 } from "lucide-react";
 import { getAnalysis, getGitHistory, sendChat } from "../../services/api";
 import { 
@@ -14,6 +14,8 @@ import {
   CartesianGrid, Treemap,
   LineChart, Line, PieChart, Pie, Cell
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -104,7 +106,7 @@ export function DashboardPage() {
       </div>
 
       {/* Top Navbar */}
-      <TopNavbar repoState={repoState} healthScore={healthScore} />
+      <TopNavbar repoState={repoState} healthScore={healthScore} analysisData={analysisData} />
 
       {/* Main Layout Structure */}
       <div className="flex-1 flex overflow-hidden relative z-10 p-4 gap-4">
@@ -134,8 +136,7 @@ export function DashboardPage() {
                 <DirectoryExplorer data={analysisData?.directory_tree} />
               </motion.div>
             )}
-            {activeTab === "scale" && <TabScaleSimulator key="scale" />}
-            {activeTab === "settings" && <TabSettings key="settings" />}
+            {activeTab === "scale" && <TabScaleSimulator key="scale" analysisData={analysisData} />}
           </AnimatePresence>
         </main>
 
@@ -155,7 +156,7 @@ export function DashboardPage() {
 // TOP NAVBAR COMPONENT - FIX D29, D30, D31
 // ============================================================================
 
-function TopNavbar({ repoState, healthScore }: { repoState: RepoState, healthScore: number }) {
+function TopNavbar({ repoState, healthScore, analysisData }: { repoState: RepoState, healthScore: number, analysisData: any }) {
   const [animatedScore, setAnimatedScore] = useState(0);
 
   // FIX D31: Animate health score on load
@@ -182,6 +183,99 @@ function TopNavbar({ repoState, healthScore }: { repoState: RepoState, healthSco
   const handleBackToScan = () => {
     // Navigate back to scan page
     window.history.back();
+  };
+
+  const handleDownloadReport = () => {
+    if (!analysisData) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(63, 81, 181); // Indigo color
+    doc.text("CodePulse Platform Analysis", 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 14, 28);
+    
+    // Repo Info
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Repository Details", 14, 40);
+    
+    autoTable(doc, {
+      startY: 45,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Repository', `${repoState.owner}/${repoState.name}`],
+        ['Branch', repoState.branch],
+        ['Commit Hash', repoState.commitHash],
+        ['Overall Health Score', `${healthScore}/100`],
+        ['Total Files Analyzed', (analysisData.total_files || 0).toString()],
+        ['API Routes Detected', (analysisData.api_routes?.length || 0).toString()]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [63, 81, 181] }
+    });
+    
+    // Tech Debt Hotspots
+    let currentY = (doc as any).lastAutoTable.finalY + 15;
+    
+    doc.setFontSize(14);
+    doc.text("High-Risk Tech Debt Hotspots", 14, currentY);
+    
+    const hotspots = (analysisData.heatmap_files || [])
+      .filter((f: any) => f.risk >= 60)
+      .sort((a: any, b: any) => b.risk - a.risk)
+      .slice(0, 10);
+      
+    if (hotspots.length > 0) {
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['File Path', 'Risk Score', 'Complexity', 'Bugs']],
+        body: hotspots.map((f: any) => [
+          f.path, 
+          `${f.risk}/100`, 
+          f.complexity.toString(), 
+          f.bugs.toString()
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [220, 53, 69] } // Red for risk
+      });
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+    } else {
+      doc.setFontSize(10);
+      doc.text("No critical high-risk files detected. Excellent!", 14, currentY + 7);
+      currentY += 15;
+    }
+    
+    // Scale Simulator Limits
+    if (analysisData.scale_profile?.components?.length > 0) {
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Infrastructure Scaling Limits", 14, currentY);
+      
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Component Name', 'Type', 'Failure Threshold']],
+        body: analysisData.scale_profile.components.map((c: any) => [
+          c.name,
+          c.type.toUpperCase(),
+          `${c.failureThreshold}x Traffic`
+        ]),
+        theme: 'plain',
+        headStyles: { fillColor: [108, 117, 125], textColor: 255 }
+      });
+    }
+
+    doc.save(`CodePulse-Report-${repoState.name}-${repoState.commitHash.substring(0, 7)}.pdf`);
   };
 
   return (
@@ -228,6 +322,17 @@ function TopNavbar({ repoState, healthScore }: { repoState: RepoState, healthSco
           <Gauge className="w-4 h-4 text-emerald-500" />
           <span className="text-xs font-bold text-gray-700">Health: <span className="text-emerald-600">{animatedScore}/100</span></span>
         </div>
+
+        {/* Download Report Button */}
+        <button 
+          onClick={handleDownloadReport}
+          disabled={!analysisData}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Download Analysis Report"
+        >
+          <Download className="w-4 h-4" />
+          <span className="text-xs font-bold tracking-wider">REPORT</span>
+        </button>
 
         {/* FIX D30: Actual GitHub link from repo state */}
         <a 
@@ -326,21 +431,6 @@ function Sidebar({
         })}
       </div>
 
-      {/* FIX D34: Settings as gear icon at bottom */}
-      <div className="border-t border-gray-100 pt-4 mt-auto">
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`relative flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 text-sm font-semibold group outline-none w-full ${
-            activeTab === 'settings'
-              ? "text-indigo-700 bg-indigo-50 shadow-sm border border-indigo-100" 
-              : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-          }`}
-          title={!sidebarOpen ? "Settings" : undefined}
-        >
-          <Settings className="w-5 h-5" />
-          {sidebarOpen && <span className="relative z-10 tracking-tight">Settings</span>}
-        </button>
-      </div>
     </nav>
   );
 }
@@ -2107,23 +2197,52 @@ function BugOriginDetection({ onSelectCommit, commits }: { onSelectCommit: (id: 
 // TAB 4: SCALE SIMULATOR - FIX D19, D20, D21, D22, D23
 // ============================================================================
 
-function TabScaleSimulator() {
+function TabScaleSimulator({ analysisData }: { analysisData: any }) {
   // FIX D19: Logarithmic scale (0-100 maps to 1x-100x)
   const [sliderValue, setSliderValue] = useState(0);
   
   // Convert linear slider to logarithmic traffic multiplier
   const trafficMultiplier = Math.pow(100, sliderValue / 100);
-  const trafficLevel = Math.floor(trafficMultiplier / 10); // 0-10 scale for thresholds
 
-  // FIX D20: Staggered failure thresholds
-  const dbFailing = trafficMultiplier >= 40;
-  const apiFailing = trafficMultiplier >= 65;
-  const authFailing = trafficMultiplier >= 85;
+  // Extract scale profile from real backend analysis data
+  const profile = analysisData?.scale_profile || {};
+  const baseLatency = profile.baseLatency || 50;
+  const baseErrorRate = profile.baseErrorRate || 0.1;
+  const baseMemory = profile.baseMemory || 25;
+  const latencyGrowthRate = profile.latencyGrowthRate || 8;
+  const errorGrowthRate = profile.errorGrowthRate || 0.12;
+  const memoryGrowthRate = profile.memoryGrowthRate || 0.65;
+  const components = profile.components || [];
+  const recommendations = profile.recommendations || [];
 
-  // FIX D21: Animated metrics
-  const latency = Math.min(Math.round(50 + (trafficMultiplier * 8)), 9999);
-  const errorRate = Math.min(Math.round(0.1 + (trafficMultiplier * 0.12)), 99);
-  const memoryUsage = Math.min(Math.round(25 + (trafficMultiplier * 0.65)), 100);
+  // Dynamic metrics computed from real base values + traffic multiplier
+  const latency = Math.min(Math.round(baseLatency + (trafficMultiplier * latencyGrowthRate)), 9999);
+  const errorRate = Math.min(Math.round((baseErrorRate + (trafficMultiplier * errorGrowthRate)) * 10) / 10, 99);
+  const memoryUsage = Math.min(Math.round(baseMemory + (trafficMultiplier * memoryGrowthRate)), 100);
+
+  // Use top 3 components for status cards (or defaults if none detected)
+  const displayComponents = components.length > 0 ? components.slice(0, 3) : [
+    { name: "Primary Module", failureThreshold: 40, type: "module", fileCount: 0, healthyDetail: "Awaiting analysis data...", failingDetail: "Module under stress." },
+    { name: "Secondary Module", failureThreshold: 65, type: "module", fileCount: 0, healthyDetail: "Awaiting analysis data...", failingDetail: "Module under stress." },
+    { name: "Tertiary Module", failureThreshold: 85, type: "module", fileCount: 0, healthyDetail: "Awaiting analysis data...", failingDetail: "Module under stress." },
+  ];
+
+  // Component icon mapping based on type
+  const getComponentIcon = (type: string) => {
+    switch(type) {
+      case 'database': return <Database className="w-6 h-6" />;
+      case 'api_gateway': return <Server className="w-6 h-6" />;
+      case 'auth_service': return <ShieldAlert className="w-6 h-6" />;
+      case 'middleware': return <Layers className="w-6 h-6" />;
+      case 'frontend': return <Monitor className="w-6 h-6" />;
+      default: return <Server className="w-6 h-6" />;
+    }
+  };
+
+  // Determine threshold zones from actual component data
+  const sortedThresholds = displayComponents.map((c: any) => c.failureThreshold).sort((a: number, b: number) => a - b);
+  const zone1End = sortedThresholds[0] || 40;
+  const zone2End = sortedThresholds[sortedThresholds.length - 1] || 85;
 
   return (
     <motion.div 
@@ -2138,13 +2257,18 @@ function TabScaleSimulator() {
             <Server className="w-6 h-6 text-sky-500" />
             Scale Simulator
           </h2>
-          <p className="text-gray-500 text-sm mt-1">Test system behavior under extreme load</p>
+          <p className="text-gray-500 text-sm mt-1">
+            Test system behavior under extreme load
+            {profile.summary && (
+              <span className="text-gray-400"> — {profile.summary.totalFiles} files, {profile.summary.apiRoutes} routes, avg complexity {profile.summary.avgComplexity}</span>
+            )}
+          </p>
         </div>
       </div>
 
       <div className="flex-1 p-6 overflow-y-auto">
         <div className="space-y-6">
-          {/* Traffic Slider - FIX D19, D23 */}
+          {/* Traffic Slider */}
           <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest flex items-center gap-2">
@@ -2156,7 +2280,6 @@ function TabScaleSimulator() {
               </div>
             </div>
 
-            {/* FIX D23: Single style approach (inline) */}
             <input
               type="range"
               min="0"
@@ -2167,24 +2290,24 @@ function TabScaleSimulator() {
               className="w-full h-3 rounded-full appearance-none cursor-pointer bg-gray-200"
             />
 
-            {/* FIX D19: Visual threshold markers */}
+            {/* Dynamic threshold markers from actual component data */}
             <div className="mt-6 grid grid-cols-3 gap-3 text-xs">
               <div className="text-center p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                <p className="text-emerald-700 font-bold">1x - 40x</p>
+                <p className="text-emerald-700 font-bold">1x - {zone1End}x</p>
                 <p className="text-emerald-600/70 mt-1">Optimal Range</p>
               </div>
               <div className="text-center p-2 rounded-lg bg-amber-50 border border-amber-100">
-                <p className="text-amber-700 font-bold">40x - 85x</p>
+                <p className="text-amber-700 font-bold">{zone1End}x - {zone2End}x</p>
                 <p className="text-amber-600/70 mt-1">Degradation</p>
               </div>
               <div className="text-center p-2 rounded-lg bg-rose-50 border border-rose-100">
-                <p className="text-rose-700 font-bold">85x+</p>
+                <p className="text-rose-700 font-bold">{zone2End}x+</p>
                 <p className="text-rose-600/70 mt-1">Critical Failure</p>
               </div>
             </div>
           </div>
 
-          {/* FIX D21: Animated metric counters */}
+          {/* Dynamic metric counters */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <AnimatedMetricCard
               label="Latency"
@@ -2209,89 +2332,48 @@ function TabScaleSimulator() {
             />
           </div>
 
+          {/* Dynamic component status cards from real analysis */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* FIX D20: Staggered component failures */}
-            <ComponentStatusCard
-              name="Database"
-              failing={dbFailing}
-              threshold="40x"
-              icon={<Database className="w-6 h-6" />}
-              details={dbFailing ? "Connection pool exhausted. Max 100 connections reached. Latency spiking." : "All connections healthy. Pool at 42% capacity."}
-            />
-            <ComponentStatusCard
-              name="API Gateway"
-              failing={apiFailing}
-              threshold="65x"
-              icon={<Server className="w-6 h-6" />}
-              details={apiFailing ? "CPU at 98%. Event loop lag detected. Dropping non-essential traffic." : "CPU at moderate levels. Request queue empty."}
-            />
-            <ComponentStatusCard
-              name="Auth Service"
-              failing={authFailing}
-              threshold="85x"
-              icon={<ShieldAlert className="w-6 h-6" />}
-              details={authFailing ? "Token validation timeout. Redis cache overwhelmed. System locked." : "Token validation fast. Cache hit rate: 94%."}
-            />
+            {displayComponents.slice(0, 3).map((comp: any, idx: number) => (
+              <ComponentStatusCard
+                key={idx}
+                name={comp.name}
+                failing={trafficMultiplier >= comp.failureThreshold}
+                threshold={`${comp.failureThreshold}x`}
+                icon={getComponentIcon(comp.type)}
+                details={trafficMultiplier >= comp.failureThreshold ? comp.failingDetail : comp.healthyDetail}
+              />
+            ))}
           </div>
 
+          {/* Dynamic AI recommendations from real analysis */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <AIRecommendationCard
-              title="Implement PgBouncer"
-              severity={dbFailing ? "critical" : trafficMultiplier > 20 ? "warning" : "info"}
-              description="Database connection pooling required to prevent cascading failures at scale."
-              impact="Handles 10x more concurrent connections"
-              onAskBob={() => {
-                const event = new CustomEvent('bob-explain-endpoint', { 
-                  detail: { 
-                    endpoint: {
-                      method: 'TECH',
-                      path: 'Database Connection Pool',
-                      file: 'architecture',
-                      description: 'Scaling database connections'
+            {(recommendations.length > 0 ? recommendations : [
+              { title: "Analyzing...", severity: "info", description: "Scan a repository to get scaling recommendations.", impact: "—" }
+            ]).slice(0, 3).map((rec: any, idx: number) => (
+              <AIRecommendationCard
+                key={idx}
+                title={rec.title}
+                severity={rec.severity === "critical" && displayComponents[idx] && trafficMultiplier >= displayComponents[idx].failureThreshold 
+                  ? "critical" 
+                  : rec.severity}
+                description={rec.description}
+                impact={rec.impact}
+                onAskBob={() => {
+                  const event = new CustomEvent('bob-explain-endpoint', { 
+                    detail: { 
+                      endpoint: {
+                        method: 'TECH',
+                        path: rec.title,
+                        file: 'architecture',
+                        description: rec.description
+                      } 
                     } 
-                  } 
-                });
-                window.dispatchEvent(event);
-              }}
-            />
-            <AIRecommendationCard
-              title="Add Redis Cache Layer"
-              severity={apiFailing ? "critical" : trafficMultiplier > 40 ? "warning" : "info"}
-              description="Cache frequently accessed API responses to reduce database load and improve latency."
-              impact="Reduces DB queries by 70-80%"
-              onAskBob={() => {
-                const event = new CustomEvent('bob-explain-endpoint', { 
-                  detail: { 
-                    endpoint: {
-                      method: 'TECH',
-                      path: 'Redis Caching Strategy',
-                      file: 'infrastructure',
-                      description: 'Adding caching layer'
-                    } 
-                  } 
-                });
-                window.dispatchEvent(event);
-              }}
-            />
-            <AIRecommendationCard
-              title="Horizontal Scaling"
-              severity={authFailing ? "critical" : trafficMultiplier > 60 ? "warning" : "info"}
-              description="Deploy multiple auth service instances behind a load balancer for true horizontal scale."
-              impact="Linear scaling to 100x+ traffic"
-              onAskBob={() => {
-                const event = new CustomEvent('bob-explain-endpoint', { 
-                  detail: { 
-                    endpoint: {
-                      method: 'TECH',
-                      path: 'Horizontal Scaling',
-                      file: 'deployment',
-                      description: 'Scaling auth services'
-                    } 
-                  } 
-                });
-                window.dispatchEvent(event);
-              }}
-            />
+                  });
+                  window.dispatchEvent(event);
+                }}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -2473,159 +2555,7 @@ function AIRecommendationCard({
   );
 }
 
-// ============================================================================
-// TAB 5: SETTINGS - FIX D32, D33
-// ============================================================================
 
-function TabSettings() {
-  // FIX D32: Functional toggle switches
-  const [deepScan, setDeepScan] = useState(true);
-  const [autoBugFix, setAutoBugFix] = useState(false);
-  const [visualMode, setVisualMode] = useState<'cinematic' | 'performance'>('cinematic');
-
-  // FIX D33: Export button with toast notification
-  const handleExport = () => {
-    // Show toast notification
-    alert('🎉 C-Level Security Report generated successfully! Check your downloads folder.');
-    
-    // In production, trigger actual PDF download
-    // const link = document.createElement('a');
-    // link.href = '/reports/security-report.pdf';
-    // link.download = 'CodePulse-Security-Report.pdf';
-    // link.click();
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="flex-1 flex flex-col h-full bg-transparent"
-    >
-      <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-            <Settings className="w-6 h-6 text-gray-400" />
-            System Configuration
-          </h2>
-          <p className="text-gray-500 text-sm mt-1">Configure IBM Bob AI parameters and visualization preferences.</p>
-        </div>
-      </div>
-
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="max-w-3xl flex flex-col gap-6">
-          {/* AI Engine Settings */}
-          <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-indigo-500" /> AI Engine Settings
-            </h3>
-            
-            <div className="flex flex-col gap-5">
-              {/* FIX D32: Functional toggle for deep scan */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 text-sm">Deep Neural Scan</h4>
-                  <p className="text-xs text-gray-500 mt-1">Allows IBM Bob to analyze abstract syntax trees down to variable scope.</p>
-                </div>
-                <button
-                  onClick={() => setDeepScan(!deepScan)}
-                  className={`w-12 h-6 rounded-full relative cursor-pointer shadow-inner transition-all ${
-                    deepScan ? 'bg-indigo-500' : 'bg-gray-200'
-                  }`}
-                >
-                  <motion.div
-                    animate={{ x: deepScan ? 24 : 4 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                  />
-                </button>
-              </div>
-
-              <div className="w-full h-px bg-gray-100" />
-
-              {/* FIX D32: Functional toggle for auto bug fix */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 text-sm">Autonomous Bug Resolution</h4>
-                  <p className="text-xs text-gray-500 mt-1">Automatically create pull requests for high-confidence AI fixes.</p>
-                </div>
-                <button
-                  onClick={() => setAutoBugFix(!autoBugFix)}
-                  className={`w-12 h-6 rounded-full relative cursor-pointer shadow-inner transition-all ${
-                    autoBugFix ? 'bg-indigo-500' : 'bg-gray-200'
-                  }`}
-                >
-                  <motion.div
-                    animate={{ x: autoBugFix ? 24 : 4 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Visualization Controls */}
-          <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-purple-500" /> Visualization Controls
-            </h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => setVisualMode('cinematic')}
-                className={`border rounded-xl p-4 cursor-pointer transition-all ${
-                  visualMode === 'cinematic'
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-full shadow-sm flex items-center justify-center mb-3 ${
-                  visualMode === 'cinematic' ? 'bg-indigo-100' : 'bg-white'
-                }`}>
-                  <Activity className={`w-5 h-5 ${visualMode === 'cinematic' ? 'text-indigo-600' : 'text-gray-400'}`} />
-                </div>
-                <h4 className="font-bold text-gray-900 text-sm">Cinematic Mode</h4>
-                <p className="text-xs text-gray-500 mt-1">High fidelity rendering, GPU accelerated particles.</p>
-              </button>
-
-              <button
-                onClick={() => setVisualMode('performance')}
-                className={`border rounded-xl p-4 cursor-pointer transition-all ${
-                  visualMode === 'performance'
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-full shadow-sm flex items-center justify-center mb-3 ${
-                  visualMode === 'performance' ? 'bg-indigo-100' : 'bg-white'
-                }`}>
-                  <Zap className={`w-5 h-5 ${visualMode === 'performance' ? 'text-indigo-600' : 'text-gray-400'}`} />
-                </div>
-                <h4 className="font-bold text-gray-900 text-sm">Performance Mode</h4>
-                <p className="text-xs text-gray-500 mt-1">Reduced animations for low-end hardware.</p>
-              </button>
-            </div>
-          </div>
-          
-          {/* Export & Reports - FIX D33 */}
-          <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">
-              <Database className="w-5 h-5 text-emerald-500" /> Export & Reports
-            </h3>
-            <button 
-              onClick={handleExport}
-              className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Generate C-Level Security Report
-            </button>
-            <p className="text-xs text-gray-500 mt-3">Export a comprehensive PDF report for executive stakeholders with security metrics and recommendations.</p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 // ============================================================================
 // API ROUTES MAP COMPONENT
