@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import * as d3 from 'd3-hierarchy';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, ShieldAlert, CheckCircle2, X, Activity, Info, FileCode, Cpu, Wrench, Sparkles, BrainCircuit, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle2, X, Activity, Info, FileCode, Cpu, Wrench, Sparkles, BrainCircuit, ChevronRight, FolderTree, Flame } from 'lucide-react';
 
 interface RiskFactors {
   complexity: number;
@@ -20,24 +20,24 @@ interface NodeData {
 }
 
 const getRiskColor = (risk: number) => {
-  if (risk < 30) return 'rgba(16, 185, 129, 0.15)'; // emerald (healthy)
-  if (risk < 70) return 'rgba(245, 158, 11, 0.18)'; // amber (warning)
-  if (risk < 90) return 'rgba(244, 63, 94, 0.22)';  // rose (high risk)
-  return 'rgba(225, 29, 72, 0.30)'; // rose (critical)
+  if (risk < 30) return 'rgba(16, 185, 129, 0.08)'; // softer emerald
+  if (risk < 70) return 'rgba(245, 158, 11, 0.12)'; // softer amber
+  if (risk < 90) return 'rgba(244, 63, 94, 0.15)';  // softer rose
+  return 'rgba(225, 29, 72, 0.20)'; // softer critical rose
 };
 
 const getRiskBorderColor = (risk: number) => {
-  if (risk < 30) return 'rgba(16, 185, 129, 0.4)';
-  if (risk < 70) return 'rgba(245, 158, 11, 0.5)';
-  if (risk < 90) return 'rgba(244, 63, 94, 0.6)';
-  return 'rgba(225, 29, 72, 0.8)';
+  if (risk < 30) return 'rgba(16, 185, 129, 0.3)';
+  if (risk < 70) return 'rgba(245, 158, 11, 0.4)';
+  if (risk < 90) return 'rgba(244, 63, 94, 0.5)';
+  return 'rgba(225, 29, 72, 0.7)';
 };
 
 const getRiskTextColor = (risk: number) => {
-  if (risk < 30) return '#065f46';
+  if (risk < 30) return '#064e3b';
   if (risk < 70) return '#78350f';
   if (risk < 90) return '#881337';
-  return '#881337';
+  return '#4c0519';
 };
 
 const RiskBar = ({ label, value, colorClass }: { label: string, value: number, colorClass: string }) => (
@@ -58,9 +58,9 @@ const RiskBar = ({ label, value, colorClass }: { label: string, value: number, c
 );
 
 export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
-  const [isGeneratingFix, setIsGeneratingFix] = useState(false);
   const [selectedFile, setSelectedFile] = useState<d3.HierarchyRectangularNode<NodeData> | null>(null);
   const [hoveredFile, setHoveredFile] = useState<d3.HierarchyRectangularNode<NodeData> | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -105,46 +105,39 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
   }, []);
-
   const currentRootData = currentPath[currentPath.length - 1];
+  const rootHierarchy = useMemo(() => d3.hierarchy(currentRootData), [currentRootData]);
 
-  const root = useMemo(() => {
-    const hierarchy = d3.hierarchy(currentRootData)
-      .sum(d => d.size || 0)
-      .sort((a, b) => (b.value || 0) - (a.value || 0));
+  // Group leaves by their immediate top-level folder under the current root
+  const groupedFiles = useMemo(() => {
+    const groups: Record<string, d3.HierarchyNode<NodeData>[]> = {};
+    const leaves = rootHierarchy.leaves();
+    
+    leaves.forEach(leaf => {
+      let ancestor = leaf;
+      while (ancestor.parent && ancestor.parent.data !== currentRootData) {
+        ancestor = ancestor.parent;
+      }
+      const groupName = ancestor.data === currentRootData ? 'Root Files' : ancestor.data.name;
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(leaf);
+    });
 
-    const leafCount = Math.max(hierarchy.leaves().length, 1);
-    const depthMax = hierarchy.height;
+    // Sort files within groups by risk
+    Object.keys(groups).forEach(k => {
+      groups[k].sort((a, b) => (b.data.riskScore || 0) - (a.data.riskScore || 0));
+    });
 
-    // Each leaf needs at least 160x90px to be readable
-    // Total area needed = leafCount * 160 * 90
-    // Distribute into a roughly 16:9 layout
-    const totalArea = leafCount * 160 * 90;
-    const aspectRatio = 1.6;
-    const baseWidth = Math.sqrt(totalArea * aspectRatio);
-    const baseHeight = totalArea / baseWidth;
-
-    // Add extra space for folder header padding at each nesting level
-    const paddingExtra = depthMax * 40;
-
-    const layoutWidth = Math.max(dimensions.width, Math.ceil(baseWidth) + paddingExtra, 1000);
-    const layoutHeight = Math.max(dimensions.height, Math.ceil(baseHeight) + paddingExtra, 600);
-
-    const treemap = d3.treemap<NodeData>()
-      .size([layoutWidth, layoutHeight])
-      .tile(d3.treemapSquarify.ratio(1.2))
-      .paddingTop(32)
-      .paddingRight(6)
-      .paddingBottom(6)
-      .paddingLeft(6)
-      .paddingInner(5)
-      .round(true);
-
-    return treemap(hierarchy);
-  }, [dimensions, currentRootData]);
-
-  const leaves = root.leaves();
-  const internalNodes = root.descendants().filter(d => d.depth > 0 && d.children);
+    // Sort groups alphabetically, but put 'Root Files' first
+    return Object.keys(groups).sort((a, b) => {
+      if (a === 'Root Files') return -1;
+      if (b === 'Root Files') return 1;
+      return a.localeCompare(b);
+    }).map(key => ({
+      name: key,
+      nodes: groups[key]
+    }));
+  }, [currentRootData, rootHierarchy]);
 
   // If no data from API, show loading state (AFTER all hooks)
   if (!hasData) {
@@ -153,26 +146,25 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
         <div className="flex flex-col items-center gap-4 text-gray-400">
           <Activity className="w-10 h-10 animate-pulse" />
           <p className="text-sm font-bold uppercase tracking-widest">Waiting for analysis data...</p>
-          <p className="text-xs text-gray-400">Scan a repository to see the risk treemap</p>
+          <p className="text-xs text-gray-400">Scan a repository to see the risk matrix</p>
         </div>
       </div>
     );
   }
 
-
-  const handleFixClick = () => {
-    setIsGeneratingFix(true);
-    setTimeout(() => {
-      setIsGeneratingFix(false);
-    }, 1500);
-  };
-
   return (
-    <div className="relative w-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col font-sans" style={{ height: '75vh', minHeight: '600px' }}>
+    <div 
+      className="relative w-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col font-sans" 
+      style={{ height: '75vh', minHeight: '600px' }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      }}
+    >
       <div className="p-4 border-b border-gray-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-gray-50/50 shrink-0">
         <div className="flex-1 min-w-0 w-full">
           <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4 text-rose-500" /> Codebase Risk Treemap
+            <Activity className="w-4 h-4 text-rose-500" /> Codebase Risk Matrix
           </h3>
           <div className="flex flex-wrap items-center gap-3 w-full">
             <label className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 whitespace-nowrap shrink-0">
@@ -190,7 +182,7 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
                 <option key={f.path} value={f.path}>{f.path}</option>
               ))}
             </select>
-            <p className="text-[10px] text-gray-500 whitespace-nowrap shrink-0">Tile size = Lines of Code | Color = Risk Score (0-100)</p>
+            <p className="text-[10px] text-gray-500 whitespace-nowrap shrink-0">Tile = 1 File | Color = Risk Score (0-100)</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-600 shrink-0">
@@ -221,104 +213,67 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
         ))}
       </div>
 
-      <div className="flex-1 relative overflow-auto bg-slate-50/50" ref={containerRef}>
-        <div 
-          className="relative" 
-          style={{ 
-            width: root.x1, 
-            height: root.y1,
-            minWidth: '100%',
-            minHeight: '100%'
-          }}
-        >
-          {/* Render internal nodes (Folders) */}
-        {internalNodes.map((node, i) => (
-          <motion.div
-            key={`folder-${node.data.name}-${i}`}
-            layout
-            className="absolute border border-gray-200/60 rounded-lg cursor-pointer group hover:border-indigo-300/60 transition-all z-0"
-            style={{
-              backgroundColor: 'rgba(248, 250, 252, 0.7)',
-            }}
-            animate={{
-              left: node.x0,
-              top: node.y0,
-              width: Math.max(0, node.x1 - node.x0),
-              height: Math.max(0, node.y1 - node.y0),
-            }}
-            transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-            onClick={() => setCurrentPath([...currentPath, node.data])}
-          >
-            <div className="px-3 py-1.5 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest truncate flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
-              {node.data.name}
-              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </motion.div>
-        ))}
-
-        {/* Render leaves (Files) */}
-        {leaves.map((node, i) => {
-          const risk = node.data.riskScore || 0;
-          const isCritical = risk >= 70;
-          const isSelected = selectedFile === node;
-          
-          return (
-            <motion.div
-              key={`file-${node.data.name}-${i}`}
-              layout
-              className="absolute cursor-pointer z-10"
-              animate={{
-                left: node.x0,
-                top: node.y0,
-                width: Math.max(0, node.x1 - node.x0),
-                height: Math.max(0, node.y1 - node.y0),
-              }}
-              transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-              whileHover={{ scale: 0.97, zIndex: 20 }}
-              onClick={() => setSelectedFile(node)}
-              onMouseEnter={() => setHoveredFile(node)}
-              onMouseLeave={() => setHoveredFile(null)}
-            >
-              <div
-                className={`w-full h-full rounded-lg flex flex-col p-2.5 overflow-hidden transition-shadow duration-200 hover:shadow-md ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
-                style={{
-                  backgroundColor: getRiskColor(risk),
-                  borderColor: getRiskBorderColor(risk),
-                  borderWidth: '1.5px',
-                  borderStyle: 'solid',
-                }}
-              >
-                {/* Critical Pulse */}
-                {isCritical && (
-                  <motion.div
-                    className="absolute inset-0 rounded-lg bg-rose-500/10 pointer-events-none"
-                    animate={{ opacity: [0, 0.6, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                )}
+      <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6 flex flex-col gap-8" ref={containerRef}>
+        {groupedFiles.map((group, idx) => (
+          <div key={idx} className="flex flex-col gap-3">
+            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2 border-b border-gray-200/60 pb-2">
+              {group.name === 'Root Files' ? <FileCode className="w-4 h-4 text-indigo-400" /> : <FolderTree className="w-4 h-4 text-indigo-400" />}
+              {group.name} 
+              <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 font-bold ml-2">
+                {group.nodes.length} FILES
+              </span>
+            </h4>
+            
+            <div className="flex flex-wrap gap-2">
+              {group.nodes.map((node, i) => {
+                const risk = node.data.riskScore || 0;
+                const isSelected = selectedFile === (node as any);
                 
-                <div className="relative z-10 flex items-start justify-between gap-1">
-                  <span className="text-[11px] font-bold truncate" style={{ color: getRiskTextColor(risk) }}>
-                    {node.data.name}
-                  </span>
-                  {risk >= 70 && (
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                  )}
-                </div>
-                {node.y1 - node.y0 > 50 && node.x1 - node.x0 > 80 && (
-                  <div className="mt-auto relative z-10">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-block ${
-                      risk >= 70 ? 'bg-rose-100 text-rose-700' : risk >= 30 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {risk}
+                return (
+                  <motion.button
+                    key={`file-${idx}-${i}`}
+                    layout
+                    whileHover={{ scale: 1.05, zIndex: 10 }}
+                    onClick={() => setSelectedFile(node as any)}
+                    onMouseEnter={() => setHoveredFile(node as any)}
+                    onMouseLeave={() => setHoveredFile(null)}
+                    className={`h-9 max-w-[180px] px-2.5 rounded-md flex items-center justify-between gap-2 transition-shadow relative ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2 shadow-lg z-10' : 'hover:shadow-sm'}`}
+                    style={{
+                      backgroundColor: getRiskColor(risk),
+                      borderColor: getRiskBorderColor(risk),
+                      borderWidth: '1px',
+                    }}
+                  >
+                    {risk >= 70 && (
+                      <motion.div
+                        className="absolute inset-0 rounded-md bg-rose-500/10 pointer-events-none"
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                    )}
+                    <span className="text-[11px] font-semibold truncate relative z-10" style={{ color: getRiskTextColor(risk) }}>
+                      {node.data.name}
                     </span>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-        </div>
+                    {risk >= 90 ? (
+                      <Flame className="w-3 h-3 text-rose-600 opacity-90 relative z-10 shrink-0" />
+                    ) : risk >= 70 ? (
+                      <AlertTriangle className="w-3 h-3 text-rose-600 opacity-90 relative z-10 shrink-0" />
+                    ) : (
+                      <span className="text-[9px] font-bold opacity-70 relative z-10 shrink-0" style={{ color: getRiskTextColor(risk) }}>{risk}</span>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        
+        {groupedFiles.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <FileCode className="w-12 h-12 mb-4 opacity-20" />
+            <p className="font-bold uppercase tracking-widest text-sm">Empty Directory</p>
+          </div>
+        )}
       </div>
 
       {/* Hover Tooltip */}
@@ -330,8 +285,8 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
               exit={{ opacity: 0, scale: 0.95 }}
               className="absolute z-50 pointer-events-none bg-white rounded-xl shadow-xl border border-gray-200 w-[300px] overflow-hidden"
               style={{
-                left: Math.min(hoveredFile.x1 + 10, dimensions.width - 320),
-                top: Math.min(hoveredFile.y0 + 10, dimensions.height - 250),
+                left: Math.min(mousePos.x + 15, dimensions.width - 320),
+                top: Math.min(mousePos.y + 15, dimensions.height - 250),
               }}
             >
               <div className="p-3 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between">
@@ -441,26 +396,6 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
                     </div>
                   )}
 
-                  {/* Fix Suggestions Button */}
-                  <div className="mt-auto pt-4">
-                    <button 
-                      onClick={handleFixClick}
-                      disabled={isGeneratingFix}
-                      className="group relative w-full py-3 bg-gray-900 hover:bg-black text-white text-sm font-bold rounded-xl transition-all shadow-md overflow-hidden flex items-center justify-center gap-2 disabled:bg-gray-800 disabled:cursor-not-allowed"
-                    >
-                      {isGeneratingFix ? (
-                        <>
-                          <BrainCircuit className="w-4 h-4 animate-pulse" /> Generating Refactor Plan...
-                        </>
-                      ) : (
-                        <>
-                          <Wrench className="w-4 h-4 group-hover:-rotate-12 transition-transform" /> 
-                          Fix suggestions
-                        </>
-                      )}
-                    </button>
-                    <p className="text-center text-[10px] text-gray-400 mt-2 font-medium">Bob will generate a step-by-step refactoring plan</p>
-                  </div>
                 </div>
               </motion.div>
             </>
