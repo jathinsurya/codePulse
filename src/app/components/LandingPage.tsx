@@ -53,6 +53,8 @@ function HeroSection() {
           className="h-full w-full border-none"
           allow="autoplay; fullscreen"
         />
+        {/* Spline logo hider */}
+        <div className="absolute bottom-0 right-0 w-48 h-16 bg-[#D3D3D3] z-10 pointer-events-auto cursor-default" />
       </motion.div>
 
       <div 
@@ -90,29 +92,21 @@ function HeroSection() {
         </motion.div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.5, duration: 0.8 }}
-        className="absolute bottom-8 right-8 z-20 flex items-center gap-2 rounded-full bg-white/80 backdrop-blur-md px-4 py-2 text-sm font-semibold text-gray-900 shadow-xl border border-gray-200 pointer-events-auto"
-      >
-        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-        <span>Built with Spline</span>
-      </motion.div>
+
     </section>
   );
 }
 
 function TechStrip() {
   const technologies = [
-    { name: "IBM Bob", icon: <Cpu className="w-5 h-5" /> },
-    { name: "GitHub Integration", icon: <GitBranch className="w-5 h-5" /> },
-    { name: "React Ecosystem", icon: <Code2 className="w-5 h-5" /> },
-    { name: "Next.js Compatible", icon: <Layers className="w-5 h-5" /> },
-    { name: "FastAPI Backend", icon: <Zap className="w-5 h-5" /> },
-    { name: "TypeScript native", icon: <FileCode2 className="w-5 h-5" /> },
-    { name: "AI Architecture Mapping", icon: <Network className="w-5 h-5" /> },
-    { name: "Tech Debt Analysis", icon: <Activity className="w-5 h-5" /> }
+    { name: "IBM Bob Analyst", icon: <Cpu className="w-5 h-5" /> },
+    { name: "Real-time Architecture MRI", icon: <Network className="w-5 h-5" /> },
+    { name: "Semantic Code Search", icon: <Search className="w-5 h-5" /> },
+    { name: "Tech Debt Heatmaps", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { name: "Automated Dependency Mapping", icon: <Layers className="w-5 h-5" /> },
+    { name: "Time Machine Debugger", icon: <GitCommit className="w-5 h-5" /> },
+    { name: "Intelligent Refactor Plans", icon: <Zap className="w-5 h-5" /> },
+    { name: "GitHub Integration", icon: <GitBranch className="w-5 h-5" /> }
   ];
 
   return (
@@ -239,9 +233,7 @@ function FeaturesShowcase() {
                     {feature.description}
                   </p>
                   
-                  <div className="mt-auto flex items-center text-sm font-bold text-gray-900 group-hover:text-purple-600 transition-colors cursor-pointer">
-                    Explore capability <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
+
                 </div>
               </div>
             </motion.div>
@@ -272,7 +264,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section className="relative px-6 py-32 overflow-hidden bg-white">
+    <section id="how-it-works" className="relative px-6 py-32 overflow-hidden bg-white">
       <div className="relative mx-auto max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div
@@ -375,7 +367,7 @@ function HowItWorks() {
 
 function SystemVisualization() {
   return (
-    <section className="relative px-6 py-32 overflow-hidden bg-[#FAFBFC] text-gray-900 border-y border-white shadow-[0_0_40px_rgba(0,0,0,0.02)]">
+    <section id="system-visualization" className="relative px-6 py-32 overflow-hidden bg-[#FAFBFC] text-gray-900 border-y border-white shadow-[0_0_40px_rgba(0,0,0,0.02)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-50/50 via-transparent to-transparent" />
       
       <div className="relative mx-auto max-w-7xl">
@@ -420,8 +412,8 @@ function SystemVisualization() {
               <div className="bg-white/80 backdrop-blur-xl border border-gray-100 p-4 rounded-2xl shadow-lg">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-1 font-bold">Scanning Target</p>
                 <p className="text-sm font-mono text-gray-800 flex items-center gap-2 font-semibold">
-                  <Database className="w-4 h-4 text-blue-500" />
-                  production-cluster-01
+                  <FileCode2 className="w-4 h-4 text-blue-500" />
+                  github.com/org/core-backend
                 </p>
               </div>
               
@@ -433,9 +425,9 @@ function SystemVisualization() {
 
             <div className="grid grid-cols-3 gap-6 max-w-2xl">
               {[
-                { val: "94%", label: "Test Coverage", color: "blue" },
-                { val: "12.4ms", label: "Avg Latency", color: "purple" },
-                { val: "0", label: "Critical Vulns", color: "pink" }
+                { val: "1.2M", label: "Lines of Code", color: "blue" },
+                { val: "842", label: "Tech Debt Issues", color: "purple" },
+                { val: "0", label: "Critical Risk", color: "pink" }
               ].map((stat: any, i: number) => (
                 <div key={i} className="bg-white/90 backdrop-blur-xl border border-gray-100 p-5 rounded-2xl shadow-lg relative overflow-hidden group">
                   <div className={`absolute top-0 left-0 w-1 h-full bg-${stat.color}-500`} />
@@ -459,7 +451,7 @@ function TimeMachineDebugger() {
   ];
 
   return (
-    <section className="relative px-6 py-32 overflow-hidden bg-white">
+    <section id="time-machine" className="relative px-6 py-32 overflow-hidden bg-white">
       <div className="relative mx-auto max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
           <motion.div

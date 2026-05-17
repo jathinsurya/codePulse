@@ -19,123 +19,25 @@ interface NodeData {
   children?: NodeData[];
 }
 
-const repoData: NodeData = {
-  name: "root",
-  children: [
-    {
-      name: "src",
-      children: [
-        {
-          name: "components",
-          children: [
-            { 
-              name: "DashboardPage.tsx", 
-              size: 1200, 
-              riskScore: 85, 
-              riskFactors: { complexity: 88, duplication: 65, noTests: 100 },
-              bobExplanation: "This file has grown into a monolithic component with multiple layout responsibilities and excessive cyclomatic complexity. It entirely lacks test coverage, making it highly volatile for future changes.",
-              issues: ["Complex logic", "Large file", "Multiple responsibilities"] 
-            },
-            { 
-              name: "auth.ts", 
-              size: 400, 
-              riskScore: 92, 
-              riskFactors: { complexity: 75, duplication: 40, noTests: 100 },
-              bobExplanation: "Critical security logic is mixed with outdated session handling methods and zero unit tests. This poses a significant risk of authentication bypass vulnerabilities if modified without extreme care.",
-              issues: ["High risk of vulnerabilities", "Deprecated methods"] 
-            },
-            { name: "Button.tsx", size: 400, riskScore: 5, riskFactors: { complexity: 10, duplication: 0, noTests: 0 }, bobExplanation: "Clean, focused component with excellent test coverage.", issues: [] },
-            { name: "Card.tsx", size: 450, riskScore: 12, riskFactors: { complexity: 15, duplication: 10, noTests: 20 }, bobExplanation: "Standard presentational component. Minor lack of edge-case testing.", issues: [] },
-            { name: "Sidebar.tsx", size: 500, riskScore: 28, riskFactors: { complexity: 35, duplication: 20, noTests: 40 }, bobExplanation: "State management could be extracted, but currently stable.", issues: [] },
-            { name: "Header.tsx", size: 450, riskScore: 15, riskFactors: { complexity: 20, duplication: 10, noTests: 15 }, bobExplanation: "Well-structured component with appropriate abstraction.", issues: [] },
-            { name: "RiskTreemap.tsx", size: 550, riskScore: 8, riskFactors: { complexity: 25, duplication: 5, noTests: 10 }, bobExplanation: "D3 logic is well-isolated. Good separation of concerns.", issues: [] },
-          ]
-        },
-        {
-          name: "api",
-          children: [
-            { 
-              name: "payment.ts", 
-              size: 800, 
-              riskScore: 88, 
-              riskFactors: { complexity: 90, duplication: 60, noTests: 80 },
-              bobExplanation: "Contains a massive switch statement for routing payment providers with deprecated API usages. The lack of rate-limiting tests makes it a prime candidate for DDOS vulnerabilities.",
-              issues: ["Deprecated API usage", "No rate limiting"] 
-            },
-            { 
-              name: "user.ts", 
-              size: 600, 
-              riskScore: 55, 
-              riskFactors: { complexity: 60, duplication: 45, noTests: 50 },
-              bobExplanation: "Error handling is inconsistent across different controller methods. Missing boundary tests for user input edge cases.",
-              issues: ["Missing error handling", "Inconsistent returns"] 
-            },
-            { name: "index.ts", size: 400, riskScore: 2, riskFactors: { complexity: 5, duplication: 0, noTests: 0 }, bobExplanation: "Simple export file.", issues: [] },
-            { 
-              name: "webhook.ts", 
-              size: 550, 
-              riskScore: 78, 
-              riskFactors: { complexity: 65, duplication: 50, noTests: 90 },
-              bobExplanation: "Payloads are largely unvalidated before processing. This endpoint is slow and completely lacks mocked webhook testing.",
-              issues: ["Unvalidated payload", "Slow response"] 
-            },
-          ]
-        },
-        {
-          name: "utils",
-          children: [
-            { name: "helpers.ts", size: 400, riskScore: 15, riskFactors: { complexity: 20, duplication: 10, noTests: 5 }, bobExplanation: "Pure functions with good test coverage.", issues: [] },
-            { name: "formatter.ts", size: 400, riskScore: 12, riskFactors: { complexity: 15, duplication: 5, noTests: 10 }, bobExplanation: "Reliable string manipulation utilities.", issues: [] },
-            { 
-              name: "legacy.ts", 
-              size: 900, 
-              riskScore: 95, 
-              riskFactors: { complexity: 98, duplication: 85, noTests: 100 },
-              bobExplanation: "This is a dumping ground for old utility functions with multiple code smells and missing types. It has 0% test coverage and is heavily duplicated.",
-              issues: ["Dead code", "Multiple code smells", "Missing types"] 
-            },
-            { name: "dateUtils.ts", size: 400, riskScore: 8, riskFactors: { complexity: 12, duplication: 0, noTests: 5 }, bobExplanation: "Wraps date-fns properly.", issues: [] },
-          ]
-        }
-      ]
-    },
-    {
-      name: "config",
-      children: [
-        { 
-          name: "webpack.config.js", 
-          size: 500, 
-          riskScore: 45, 
-          riskFactors: { complexity: 50, duplication: 30, noTests: 100 },
-          bobExplanation: "Complex build configuration that generates a large bundle size warning. Could benefit from chunk splitting.",
-          issues: ["Large bundle size warning"] 
-        },
-        { name: "jest.config.js", size: 450, riskScore: 20, riskFactors: { complexity: 10, duplication: 0, noTests: 100 }, bobExplanation: "Standard test configuration.", issues: [] },
-        { name: "tailwind.config.js", size: 450, riskScore: 5, riskFactors: { complexity: 5, duplication: 0, noTests: 100 }, bobExplanation: "Clean design tokens.", issues: [] },
-      ]
-    },
-    {
-      name: "public",
-      children: [
-        { name: "index.html", size: 400, riskScore: 2, riskFactors: { complexity: 0, duplication: 0, noTests: 0 }, bobExplanation: "Static entrypoint.", issues: [] },
-        { name: "favicon.ico", size: 350, riskScore: 0, riskFactors: { complexity: 0, duplication: 0, noTests: 0 }, bobExplanation: "Static asset.", issues: [] },
-      ]
-    }
-  ]
-};
-
 const getRiskColor = (risk: number) => {
-  if (risk < 30) return 'rgba(16, 185, 129, 0.2)'; // emerald-500 (healthy)
-  if (risk < 70) return 'rgba(245, 158, 11, 0.3)'; // amber-500 (warning)
-  if (risk < 90) return 'rgba(244, 63, 94, 0.4)';  // rose-500 (high risk)
-  return 'rgba(225, 29, 72, 0.6)'; // rose-600 (critical)
+  if (risk < 30) return 'rgba(16, 185, 129, 0.15)'; // emerald (healthy)
+  if (risk < 70) return 'rgba(245, 158, 11, 0.18)'; // amber (warning)
+  if (risk < 90) return 'rgba(244, 63, 94, 0.22)';  // rose (high risk)
+  return 'rgba(225, 29, 72, 0.30)'; // rose (critical)
 };
 
 const getRiskBorderColor = (risk: number) => {
-  if (risk < 30) return 'rgba(16, 185, 129, 0.5)';
-  if (risk < 70) return 'rgba(245, 158, 11, 0.6)';
-  if (risk < 90) return 'rgba(244, 63, 94, 0.7)';
-  return 'rgba(225, 29, 72, 0.9)';
+  if (risk < 30) return 'rgba(16, 185, 129, 0.4)';
+  if (risk < 70) return 'rgba(245, 158, 11, 0.5)';
+  if (risk < 90) return 'rgba(244, 63, 94, 0.6)';
+  return 'rgba(225, 29, 72, 0.8)';
+};
+
+const getRiskTextColor = (risk: number) => {
+  if (risk < 30) return '#065f46';
+  if (risk < 70) return '#78350f';
+  if (risk < 90) return '#881337';
+  return '#881337';
 };
 
 const RiskBar = ({ label, value, colorClass }: { label: string, value: number, colorClass: string }) => (
@@ -156,11 +58,17 @@ const RiskBar = ({ label, value, colorClass }: { label: string, value: number, c
 );
 
 export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
-  const treeData = data || repoData;
+  const [isGeneratingFix, setIsGeneratingFix] = useState(false);
   const [selectedFile, setSelectedFile] = useState<d3.HierarchyRectangularNode<NodeData> | null>(null);
   const [hoveredFile, setHoveredFile] = useState<d3.HierarchyRectangularNode<NodeData> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  // Use a stable empty root when no data is available (hooks must always run)
+  const emptyRoot: NodeData = useMemo(() => ({ name: 'root', children: [] }), []);
+  const treeData = (data && data.children && data.children.length > 0) ? data : emptyRoot;
+  const hasData = treeData !== emptyRoot;
+
   const [currentPath, setCurrentPath] = useState<NodeData[]>([treeData]);
 
   // Extract all folders for the dropdown filter, preserving the NodeData path
@@ -184,8 +92,6 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
     setCurrentPath([treeData]);
   }, [treeData]);
 
-  const currentRootData = currentPath[currentPath.length - 1];
-
   useEffect(() => {
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver((entries) => {
@@ -200,21 +106,39 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
     return () => resizeObserver.disconnect();
   }, []);
 
+  const currentRootData = currentPath[currentPath.length - 1];
+
   const root = useMemo(() => {
     const hierarchy = d3.hierarchy(currentRootData)
       .sum(d => d.size || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
-    const layoutWidth = Math.max(dimensions.width, 800);
-    const layoutHeight = Math.max(dimensions.height, 400);
+    const leafCount = Math.max(hierarchy.leaves().length, 1);
+    const depthMax = hierarchy.height;
+
+    // Each leaf needs at least 160x90px to be readable
+    // Total area needed = leafCount * 160 * 90
+    // Distribute into a roughly 16:9 layout
+    const totalArea = leafCount * 160 * 90;
+    const aspectRatio = 1.6;
+    const baseWidth = Math.sqrt(totalArea * aspectRatio);
+    const baseHeight = totalArea / baseWidth;
+
+    // Add extra space for folder header padding at each nesting level
+    const paddingExtra = depthMax * 40;
+
+    const layoutWidth = Math.max(dimensions.width, Math.ceil(baseWidth) + paddingExtra, 1000);
+    const layoutHeight = Math.max(dimensions.height, Math.ceil(baseHeight) + paddingExtra, 600);
 
     const treemap = d3.treemap<NodeData>()
       .size([layoutWidth, layoutHeight])
-      .paddingTop(24)
-      .paddingRight(4)
-      .paddingBottom(4)
-      .paddingLeft(4)
-      .paddingInner(4);
+      .tile(d3.treemapSquarify.ratio(1.2))
+      .paddingTop(32)
+      .paddingRight(6)
+      .paddingBottom(6)
+      .paddingLeft(6)
+      .paddingInner(5)
+      .round(true);
 
     return treemap(hierarchy);
   }, [dimensions, currentRootData]);
@@ -222,17 +146,30 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
   const leaves = root.leaves();
   const internalNodes = root.descendants().filter(d => d.depth > 0 && d.children);
 
+  // If no data from API, show loading state (AFTER all hooks)
+  if (!hasData) {
+    return (
+      <div className="relative w-full h-[750px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col font-sans items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-gray-400">
+          <Activity className="w-10 h-10 animate-pulse" />
+          <p className="text-sm font-bold uppercase tracking-widest">Waiting for analysis data...</p>
+          <p className="text-xs text-gray-400">Scan a repository to see the risk treemap</p>
+        </div>
+      </div>
+    );
+  }
+
+
   const handleFixClick = () => {
     setIsGeneratingFix(true);
     setTimeout(() => {
       setIsGeneratingFix(false);
-      // In a real app, this would open the chat panel with the plan
     }, 1500);
   };
 
   return (
-    <div className="relative w-full h-[600px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col font-sans">
-      <div className="p-4 border-b border-gray-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-gray-50/50">
+    <div className="relative w-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col font-sans" style={{ height: '75vh', minHeight: '600px' }}>
+      <div className="p-4 border-b border-gray-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-gray-50/50 shrink-0">
         <div className="flex-1 min-w-0 w-full">
           <h3 className="font-bold text-gray-900 text-sm uppercase tracking-widest flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4 text-rose-500" /> Codebase Risk Treemap
@@ -270,7 +207,7 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
       </div>
 
       {/* Breadcrumb Navigation */}
-      <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center gap-1.5 text-xs font-mono overflow-x-auto shadow-sm z-10">
+      <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center gap-1.5 text-xs font-mono overflow-x-auto shadow-sm z-10 shrink-0">
         {currentPath.map((node, i) => (
           <React.Fragment key={`crumb-${i}`}>
             <button 
@@ -284,12 +221,14 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
         ))}
       </div>
 
-      <div className="flex-1 relative overflow-auto bg-gray-50" ref={containerRef}>
+      <div className="flex-1 relative overflow-auto bg-slate-50/50" ref={containerRef}>
         <div 
           className="relative" 
           style={{ 
-            width: Math.max(dimensions.width, 800), 
-            height: Math.max(dimensions.height, 400) 
+            width: root.x1, 
+            height: root.y1,
+            minWidth: '100%',
+            minHeight: '100%'
           }}
         >
           {/* Render internal nodes (Folders) */}
@@ -297,9 +236,9 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
           <motion.div
             key={`folder-${node.data.name}-${i}`}
             layout
-            className="absolute border border-gray-200/50 rounded-md cursor-pointer hover:bg-indigo-50/30 transition-colors z-0"
+            className="absolute border border-gray-200/60 rounded-lg cursor-pointer group hover:border-indigo-300/60 transition-all z-0"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.5)',
+              backgroundColor: 'rgba(248, 250, 252, 0.7)',
             }}
             animate={{
               left: node.x0,
@@ -310,8 +249,9 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
             transition={{ type: "spring", bounce: 0, duration: 0.5 }}
             onClick={() => setCurrentPath([...currentPath, node.data])}
           >
-            <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate flex items-center gap-1.5 group-hover:text-indigo-500 transition-colors">
-              {node.data.name} <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-1 transition-opacity" />
+            <div className="px-3 py-1.5 text-[10px] font-extrabold text-gray-500 uppercase tracking-widest truncate flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
+              {node.data.name}
+              <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </motion.div>
         ))}
@@ -334,40 +274,43 @@ export function RiskTreemapVisualization({ data }: { data?: NodeData }) {
                 height: Math.max(0, node.y1 - node.y0),
               }}
               transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-              whileHover={{ scale: 0.98, zIndex: 20 }}
+              whileHover={{ scale: 0.97, zIndex: 20 }}
               onClick={() => setSelectedFile(node)}
               onMouseEnter={() => setHoveredFile(node)}
               onMouseLeave={() => setHoveredFile(null)}
             >
               <div
-                className={`w-full h-full rounded-md shadow-sm flex flex-col p-2 overflow-hidden backdrop-blur-sm ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
+                className={`w-full h-full rounded-lg flex flex-col p-2.5 overflow-hidden transition-shadow duration-200 hover:shadow-md ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
                 style={{
                   backgroundColor: getRiskColor(risk),
                   borderColor: getRiskBorderColor(risk),
-                  borderWidth: '1px'
+                  borderWidth: '1.5px',
+                  borderStyle: 'solid',
                 }}
               >
                 {/* Critical Pulse */}
                 {isCritical && (
                   <motion.div
-                    className="absolute inset-0 bg-rose-500/20 pointer-events-none"
-                    animate={{ opacity: [0, 0.8, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="absolute inset-0 rounded-lg bg-rose-500/10 pointer-events-none"
+                    animate={{ opacity: [0, 0.6, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
                   />
                 )}
                 
-                <div className="relative z-10 flex items-start justify-between gap-2">
-                  <span className="text-xs font-semibold text-gray-800 truncate mix-blend-overlay">
+                <div className="relative z-10 flex items-start justify-between gap-1">
+                  <span className="text-[11px] font-bold truncate" style={{ color: getRiskTextColor(risk) }}>
                     {node.data.name}
                   </span>
                   {risk >= 70 && (
-                    <AlertTriangle className="w-3 h-3 text-rose-700 shrink-0" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                   )}
                 </div>
-                {node.data.issues && node.data.issues.length > 0 && node.y1 - node.y0 > 60 && node.x1 - node.x0 > 100 && (
+                {node.y1 - node.y0 > 50 && node.x1 - node.x0 > 80 && (
                   <div className="mt-auto relative z-10">
-                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-sm bg-white/60 text-gray-800 backdrop-blur-md">
-                      Risk: {risk}
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-block ${
+                      risk >= 70 ? 'bg-rose-100 text-rose-700' : risk >= 30 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {risk}
                     </span>
                   </div>
                 )}

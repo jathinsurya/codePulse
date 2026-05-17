@@ -1453,12 +1453,27 @@ function TabHeatmap({ onHealthScoreUpdate, analysisData }: { onHealthScoreUpdate
               <Flame className="w-4 h-4 text-rose-600" /> Hot Zones
             </h3>
             <div className="space-y-3">
-              {[
-                { zone: 'Webhook Layer', files: 3, avgRisk: 82, color: 'rose' },
-                { zone: 'Payment System', files: 5, avgRisk: 71, color: 'rose' },
-                { zone: 'Auth Module', files: 4, avgRisk: 58, color: 'amber' },
-                { zone: 'API Gateway', files: 6, avgRisk: 49, color: 'amber' }
-              ].map((zone: any, idx: number) => (
+              {(() => {
+                // Compute hot zones from actual risk files
+                const zoneMap: Record<string, { files: number; totalRisk: number }> = {};
+                processedFiles.forEach((f: any) => {
+                  const parts = (f.path || '').split('/').filter(Boolean);
+                  const zone = parts.length > 1 ? parts[parts.length - 2] : 'Root';
+                  if (!zoneMap[zone]) zoneMap[zone] = { files: 0, totalRisk: 0 };
+                  zoneMap[zone].files += 1;
+                  zoneMap[zone].totalRisk += (f.risk || 0);
+                });
+                const zones = Object.entries(zoneMap)
+                  .map(([name, v]) => ({
+                    zone: name,
+                    files: v.files,
+                    avgRisk: Math.round(v.totalRisk / v.files),
+                    color: (v.totalRisk / v.files) >= 60 ? 'rose' : (v.totalRisk / v.files) >= 30 ? 'amber' : 'emerald'
+                  }))
+                  .sort((a, b) => b.avgRisk - a.avgRisk)
+                  .slice(0, 4);
+                return zones;
+              })().map((zone: any, idx: number) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: -20 }}

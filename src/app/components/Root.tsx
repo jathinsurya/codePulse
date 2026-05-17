@@ -25,14 +25,12 @@ function Navbar() {
           <span className="font-bold text-xl tracking-tight text-gray-900">CodePulse</span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-          <Link to="/" className="hover:text-purple-600 transition-colors">Platform</Link>
-          <a href="#" className="hover:text-purple-600 transition-colors">Enterprise</a>
-          <a href="#" className="hover:text-purple-600 transition-colors">Pricing</a>
+          <a href="/#features" className="hover:text-purple-600 transition-colors">Features</a>
+          <a href="/#how-it-works" className="hover:text-purple-600 transition-colors">How it Works</a>
+          <a href="/#system-visualization" className="hover:text-purple-600 transition-colors">System MRI</a>
+          <a href="/#time-machine" className="hover:text-purple-600 transition-colors">Time Machine</a>
         </div>
         <div className="flex items-center gap-4">
-          <Link to="/scan" className="text-sm font-bold text-gray-900 hover:text-purple-600 transition-colors">
-            Sign In
-          </Link>
           <Link to="/scan" className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-full text-sm font-bold shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
             Start Scan
           </Link>

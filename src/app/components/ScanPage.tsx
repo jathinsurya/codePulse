@@ -118,7 +118,7 @@ export function ScanPage() {
               <HeroInputArea repoUrl={repoUrl} setRepoUrl={setRepoUrl} startScan={startScan} scanError={scanError} />
               <DemoRepositories setRepoUrl={setRepoUrl} />
               <FeaturePreviewStrip />
-              <LiveSystemVisuals />
+
               <BottomCTA />
             </motion.div>
           ) : (
@@ -208,53 +208,9 @@ function HeroInputArea({ repoUrl, setRepoUrl, startScan, scanError }: { repoUrl:
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 py-2">
-                <div className="h-[1px] bg-gradient-to-r from-transparent via-gray-200 to-gray-200 flex-1" />
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">OR</span>
-                <div className="h-[1px] bg-gradient-to-r from-gray-200 via-gray-200 to-transparent flex-1" />
-              </div>
 
-              {/* Elevated Drag and Drop Area */}
-              <div 
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setIsDragging(false); }}
-                className={`relative rounded-2xl p-12 flex flex-col items-center justify-center gap-5 transition-all duration-500 overflow-hidden cursor-pointer ${
-                  isDragging 
-                    ? "bg-indigo-50/50 scale-[1.01]" 
-                    : "bg-gray-50/30 hover:bg-gray-50/80"
-                }`}
-              >
-                {/* Holographic grid overlay */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(99,102,241,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,102,241,0.05)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-                
-                {/* Animated scanning bar on drag */}
-                {isDragging && (
-                  <motion.div 
-                    animate={{ y: ['0%', '400%', '0%'] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent pointer-events-none" 
-                  />
-                )}
 
-                {/* SVG dashed border that can animate */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="100%" height="100%" rx="16" fill="none" stroke={isDragging ? "#6366f1" : "#e5e7eb"} strokeWidth="2" strokeDasharray="8 8" className="transition-colors duration-500">
-                    {isDragging && <animate attributeName="stroke-dashoffset" from="16" to="0" dur="0.5s" repeatCount="indefinite" />}
-                  </rect>
-                </svg>
 
-                <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-2 transition-all duration-500 relative z-10 ${isDragging ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-[0_10px_30px_rgba(99,102,241,0.4)] scale-110' : 'bg-white text-gray-400 shadow-sm border border-gray-100'}`}>
-                  {isDragging && <div className="absolute inset-0 rounded-2xl border-2 border-indigo-400 animate-ping opacity-40" />}
-                  <UploadCloud className={`w-10 h-10 ${isDragging ? 'animate-bounce' : ''}`} />
-                </div>
-                <div className="text-center relative z-10">
-                  <p className={`font-bold text-xl mb-1 transition-colors ${isDragging ? 'text-indigo-600' : 'text-gray-900'}`}>
-                    {isDragging ? 'Initiating Upload Sequence...' : 'Drag & drop your repository ZIP'}
-                  </p>
-                  <p className="text-gray-400 text-sm font-medium">Auto-extracts up to 500MB</p>
-                </div>
-              </div>
 
               {/* Error message */}
               {scanError && (
@@ -515,92 +471,7 @@ function FeaturePreviewStrip() {
   );
 }
 
-function LiveSystemVisuals() {
-  return (
-    <section className="py-32 px-6 relative overflow-hidden z-10">
-      <div className="max-w-6xl mx-auto text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 mb-6">
-            <Fingerprint className="w-4 h-4 text-indigo-500" />
-            <span className="text-xs font-bold tracking-widest text-indigo-800 uppercase">Architecture Map</span>
-          </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 mb-16">
-            The AI Nervous System
-          </h2>
-        </motion.div>
 
-        <div className="relative h-[600px] w-full rounded-[3rem] bg-white/40 backdrop-blur-2xl border border-white shadow-[0_20px_80px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,1)] overflow-hidden flex items-center justify-center p-8">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05),transparent_70%)]" />
-          
-          <div className="relative z-10 flex flex-col items-center w-full max-w-4xl">
-            {/* Center Core */}
-            <motion.div 
-              animate={{ y: [-10, 10, -10] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="w-32 h-32 rounded-[2rem] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-[0_20px_50px_rgba(168,85,247,0.3),inset_0_2px_4px_rgba(255,255,255,0.4)] relative z-20 mb-16"
-            >
-              <Cpu className="w-12 h-12" />
-              <div className="absolute inset-0 rounded-[2rem] border border-white/20" />
-            </motion.div>
-
-            {/* Connecting Lines & Nodes */}
-            <div className="flex justify-between w-full relative">
-              {/* SVG Lines connecting core to nodes */}
-              <svg className="absolute top-[-100px] left-0 w-full h-[150px] pointer-events-none" preserveAspectRatio="none">
-                <path d="M 50% 0 Q 20% 100, 16% 150" fill="none" stroke="url(#grad1)" strokeWidth="2" className="opacity-50" strokeDasharray="6 6">
-                  <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite" />
-                </path>
-                <path d="M 50% 0 Q 50% 100, 50% 150" fill="none" stroke="url(#grad1)" strokeWidth="2" className="opacity-50" strokeDasharray="6 6">
-                  <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.5s" repeatCount="indefinite" />
-                </path>
-                <path d="M 50% 0 Q 80% 100, 84% 150" fill="none" stroke="url(#grad1)" strokeWidth="2" className="opacity-50" strokeDasharray="6 6">
-                  <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2.5s" repeatCount="indefinite" />
-                </path>
-                <defs>
-                  <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#ec4899" stopOpacity="0.2" />
-                  </linearGradient>
-                </defs>
-              </svg>
-
-              {[
-                { icon: <Database />, label: "Data Layer", delay: 0 },
-                { icon: <Layers />, label: "Logic Core", delay: 0.2 },
-                { icon: <Activity />, label: "API Gateway", delay: 0.4 }
-              ].map((node: any, i: number) => (
-                <motion.div 
-                  key={i} 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8, delay: node.delay, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex flex-col items-center gap-4 relative z-10 w-1/3"
-                >
-                  <motion.div 
-                    animate={{ y: [-5, 5, -5] }}
-                    transition={{ duration: 4 + i, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-16 h-16 rounded-[1.25rem] bg-white border border-gray-100 shadow-[0_12px_30px_rgba(0,0,0,0.06)] flex items-center justify-center text-indigo-500"
-                  >
-                    {React.cloneElement(node.icon as React.ReactElement, { className: "w-7 h-7" })}
-                  </motion.div>
-                  <div className="bg-white/80 backdrop-blur border border-gray-100 px-4 py-1.5 rounded-full shadow-sm text-xs font-bold text-gray-600 tracking-wider">
-                    {node.label}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function BottomCTA() {
   const navigate = useNavigate();
@@ -625,12 +496,7 @@ function BottomCTA() {
           <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="px-10 py-5 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-black hover:to-black text-white rounded-full font-bold text-lg shadow-[0_12px_30px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.2)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.25)] transition-all duration-300 flex items-center gap-2 group">
             Analyze Repository <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
-          <button 
-            onClick={() => navigate(`/dashboard?session=${localStorage.getItem('session_id')}`)}
-            className="px-10 py-5 bg-white/80 hover:bg-white backdrop-blur-md border border-gray-200 text-gray-900 rounded-full font-bold text-lg shadow-sm hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition-all duration-300"
-          >
-            Explore Dashboard
-          </button>
+
         </div>
       </motion.div>
     </section>
